@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 
 void main() => runApp(const AmbarApp());
 
@@ -26,7 +27,7 @@ class Tarea {
   Tarea(this.titulo, this.subtitulo, this.prioridad, this.estaCompletada);
 }
 
-// --- PANTALLA 1: Tareas de Proyecto ---
+// --- PANTALLA 1: LISTADO DE TAREAS ---
 class TareasScreen extends StatefulWidget {
   const TareasScreen({super.key});
   @override
@@ -109,7 +110,76 @@ class _TareasScreenState extends State<TareasScreen> {
   }
 }
 
-// --- PANTALLA 2: Revisar y Organizar (CON LÓGICA DE VOZ) ---
+// --- NUEVA PANTALLA: CAPTURAR (GRABANDO) ---
+class CapturarScreen extends StatefulWidget {
+  const CapturarScreen({super.key});
+  @override
+  State<CapturarScreen> createState() => _CapturarScreenState();
+}
+
+class _CapturarScreenState extends State<CapturarScreen> {
+  int segundos = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() => segundos++);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  String _formatearTiempo(int s) {
+    final min = (s / 60).floor().toString().padLeft(2, '0');
+    final seg = (s % 60).floor().toString().padLeft(2, '0');
+    return "$min:$seg";
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF1A73E8), // Azul vibrante
+      body: SafeArea(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text("Escuchando...", style: TextStyle(color: Colors.white70, fontSize: 16)),
+            const SizedBox(height: 20),
+            Text(_formatearTiempo(segundos), style: const TextStyle(color: Colors.white, fontSize: 60, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 60),
+            // Simulación de ondas de sonido
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(5, (index) => Container(
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                width: 4,
+                height: 40 + (index % 2 == 0 ? 20 : 0),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(2)),
+              )),
+            ),
+            const SizedBox(height: 100),
+            GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                child: const Icon(Icons.stop, color: Color(0xFF1A73E8), size: 40),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// --- PANTALLA 2: REVISAR Y ORGANIZAR ---
 class RevisarNotaScreen extends StatefulWidget {
   const RevisarNotaScreen({super.key});
   @override
@@ -117,16 +187,40 @@ class RevisarNotaScreen extends StatefulWidget {
 }
 
 class _RevisarNotaScreenState extends State<RevisarNotaScreen> {
-  // Estado de la Interfaz
   String proyecto = 'Personal';
   String prioridad = 'Alta';
   List<String> tags = ['#tareas', '#UAPA'];
   bool esTarea = true;
-
-  // Estado del Audio
   bool estaReproduciendo = false;
-  double progresoAudio = 0.3;
-  String tiempoActual = "1:14";
+  double progresoAudio = 0.0;
+  Timer? _audioTimer;
+
+  void _togglePlay() {
+    setState(() {
+      estaReproduciendo = !estaReproduciendo;
+      if (estaReproduciendo) {
+        _audioTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+          setState(() {
+            if (progresoAudio < 1.0) {
+              progresoAudio += 0.005; 
+            } else {
+              progresoAudio = 0.0;
+              estaReproduciendo = false;
+              _audioTimer?.cancel();
+            }
+          });
+        });
+      } else {
+        _audioTimer?.cancel();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _audioTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -142,7 +236,7 @@ class _RevisarNotaScreenState extends State<RevisarNotaScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _reproductorVozInteractivo(), // NUEVO: Con lógica de Play/Pausa
+            _buildAudioCard(),
             const SizedBox(height: 20),
             _buildTypeToggle(),
             const SizedBox(height: 30),
@@ -162,7 +256,7 @@ class _RevisarNotaScreenState extends State<RevisarNotaScreen> {
     );
   }
 
-  Widget _reproductorVozInteractivo() {
+  Widget _buildAudioCard() {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(color: const Color(0xFFF1F4F9), borderRadius: BorderRadius.circular(20)),
@@ -171,30 +265,15 @@ class _RevisarNotaScreenState extends State<RevisarNotaScreen> {
           const CircleAvatar(backgroundColor: Colors.white, child: Icon(Icons.mic, color: Colors.blue)),
           const SizedBox(width: 12),
           const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text("Tarea III Programación...", style: TextStyle(fontWeight: FontWeight.bold)),
-            Text("Grabado hace 2m", style: TextStyle(color: Colors.grey, fontSize: 11)),
+            Text("Grabación de Tarea", style: TextStyle(fontWeight: FontWeight.bold)),
+            Text("Audio procesado", style: TextStyle(color: Colors.grey, fontSize: 11)),
           ])),
-          // Control de Play/Pausa
           IconButton(
             icon: Icon(estaReproduciendo ? Icons.pause_circle_filled : Icons.play_circle_fill, color: Colors.blue, size: 40),
-            onPressed: () => setState(() => estaReproduciendo = !estaReproduciendo),
+            onPressed: _togglePlay,
           ),
         ]),
-        Slider(
-          value: progresoAudio, 
-          activeColor: Colors.blue,
-          onChanged: (v) => setState(() => progresoAudio = v),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(tiempoActual, style: const TextStyle(fontSize: 10, color: Colors.grey)),
-              const Text("4:12", style: TextStyle(fontSize: 10, color: Colors.grey)),
-            ],
-          ),
-        ),
+        Slider(value: progresoAudio, activeColor: Colors.blue, onChanged: (v) => setState(() => progresoAudio = v)),
       ]),
     );
   }
@@ -212,7 +291,7 @@ class _RevisarNotaScreenState extends State<RevisarNotaScreen> {
   }
 
   Widget _buildTranscriptionBox() {
-    return Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: const Color(0xFFF1F4F9), borderRadius: BorderRadius.circular(16)), child: const Text("Vamos a proceder con el diseño de Ambar, una aplicación de gestión de tareas y notas de voz...", style: TextStyle(height: 1.5, fontSize: 13, color: Colors.black87)));
+    return Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: const Color(0xFFF1F4F9), borderRadius: BorderRadius.circular(16)), child: const Text("Nota: Se ha detectado la voz correctamente. Puedes editar los tags y la prioridad antes de guardar.", style: TextStyle(height: 1.5, fontSize: 13, color: Colors.black87)));
   }
 
   Widget _buildSelectors() {
@@ -257,12 +336,19 @@ class _RevisarNotaScreenState extends State<RevisarNotaScreen> {
   }
 }
 
+// --- BARRA DE NAVEGACIÓN ---
 Widget _buildBottomNav(int index, BuildContext context) {
   return BottomNavigationBar(
     currentIndex: index, type: BottomNavigationBarType.fixed,
     selectedItemColor: Colors.blue, unselectedItemColor: Colors.blueGrey,
     selectedFontSize: 10, unselectedFontSize: 10,
-    onTap: (i) { if (i == 1) Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const TareasScreen())); },
+    onTap: (i) { 
+      if (i == 1) Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const TareasScreen()));
+      if (i == 0) {
+        // AHORA SÍ: Abre la pantalla de grabación real
+        Navigator.push(context, MaterialPageRoute(builder: (context) => const CapturarScreen()));
+      }
+    },
     items: const [
       BottomNavigationBarItem(icon: Icon(Icons.mic_none), label: "Capturar"),
       BottomNavigationBarItem(icon: Icon(Icons.task_outlined), label: "Revisar Tareas"),

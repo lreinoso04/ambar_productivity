@@ -14,10 +14,9 @@ dependencies:
   cupertino_icons: ^1.0.8
 
   # LIBRERÍAS AÑADIDAS PARA AMBAR:
-  # Para grabar voz (Micrófono)
   record: ^5.1.0
-  # Para reproducir las notas de voz
   audioplayers: ^5.2.1
+  path_provider: ^2.1.2
 
 dev_dependencies:
   flutter_test:
@@ -26,7 +25,3 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-
-  # Si en el futuro agregas imágenes o logos, se habilitan aquí:
-  # assets:
-  #   - assets/images/logo_ambar.png
